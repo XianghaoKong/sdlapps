@@ -3,49 +3,85 @@ import axiosInstance from '../axiosConfig';
 import TaskForm from '../components/TaskForm';
 import TaskList from '../components/TaskList';
 import { useAuth } from '../context/AuthContext';
+import EmptyState from '../components/EmptyState';
 
 const Tasks = () => {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   const [tasks, setTasks] = useState([]);
   const [editingTask, setEditingTask] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        if (!user?.token) return;
-        const response = await axiosInstance.get('/api/tasks', {
+        setLoading(true);
+        const res = await axiosInstance.get('/api/tasks', {
           headers: { Authorization: `Bearer ${user.token}` },
         });
-        // 后端已按角色过滤：admin=全部，driver=只看自己
-        setTasks(Array.isArray(response.data) ? response.data : (response.data?.data || []));
-      } catch (error) {
-        alert('Failed to fetch tasks.');
+        setTasks(Array.isArray(res.data) ? res.data : []);
+      } catch (e) {
+        setErr(e?.response?.data?.message || 'Failed to fetch tasks.');
+      } finally {
+        setLoading(false);
       }
     };
-
     fetchTasks();
   }, [user]);
 
-  const isAdmin = user?.role === 'admin';
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="animate-pulse rounded-lg bg-white p-6 shadow">
+          <div className="h-5 w-40 bg-gray-200 rounded mb-4" />
+          <div className="h-4 w-full bg-gray-200 rounded mb-2" />
+          <div className="h-4 w-5/6 bg-gray-200 rounded mb-2" />
+          <div className="h-4 w-4/6 bg-gray-200 rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  if (err) {
+    return (
+      <div className="container mx-auto p-6">
+        <EmptyState
+          title="Oops, failed to load violations"
+          subtitle={err}
+          actionText="Retry"
+          onAction={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto p-6">
-      {/* 只有 admin 显示表单（创建/编辑）。driver 只看列表 */}
-      {isAdmin && (
+    <div className="container mx-auto p-6 space-y-6">
+    
+      {isAdmin ? (
         <TaskForm
           tasks={tasks}
           setTasks={setTasks}
           editingTask={editingTask}
           setEditingTask={setEditingTask}
         />
-      )}
+      ) : null}
 
       <TaskList
         tasks={tasks}
         setTasks={setTasks}
         setEditingTask={setEditingTask}
-        isAdmin={isAdmin}  // 可选：你若想在列表隐藏编辑/删除按钮，用这个做条件
+        isAdmin={isAdmin}
       />
+
+      {!isAdmin && tasks.length === 0 && (
+        <EmptyState
+          title="No violations yet 🎉"
+          subtitle="You currently don't have any recorded traffic violations."
+        />
+      )}
     </div>
   );
 };

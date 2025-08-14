@@ -5,10 +5,10 @@ import axiosInstance from '../axiosConfig';
 const Register = () => {
   const [formData, setFormData] = useState({
     name: '', email: '', password: '',
-    role: 'driver',        // 新增：默认 driver
-    plate: '',             // 仅 driver 用
-    address: '',           // 仅 driver 用
-    adminKey: ''           // 仅 admin 用
+    role: 'driver',        
+    plate: '',             
+    address: '',           
+    adminKey: ''           
   });
 
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ const Register = () => {
 
   const handleRoleChange = (e) => {
     const role = e.target.value;
-    // 切换角色时清空另一侧特有字段，避免误传
+    
     setFormData(f => ({
       ...f,
       role,
@@ -29,9 +29,8 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      // 构造最小有效载荷：公共字段 + 角色特有字段
-      const payload = {
+    try {  
+        const payload = {
         name: formData.name,
         email: formData.email,
         password: formData.password,
@@ -59,7 +58,7 @@ const Register = () => {
       <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded">
         <h1 className="text-2xl font-bold mb-4 text-center">Register</h1>
 
-        {/* 公共字段 */}
+
         <input
           type="text"
           placeholder="Name"
@@ -85,7 +84,7 @@ const Register = () => {
           required
         />
 
-        {/* 角色选择 */}
+       
         <select
           value={formData.role}
           onChange={handleRoleChange}
@@ -95,7 +94,7 @@ const Register = () => {
           <option value="admin">Admin</option>
         </select>
 
-        {/* driver 专属字段 */}
+        
         {formData.role === 'driver' && (
           <>
             <input
@@ -117,7 +116,7 @@ const Register = () => {
           </>
         )}
 
-        {/* admin 专属字段 */}
+        
         {formData.role === 'admin' && (
           <input
             type="text"
