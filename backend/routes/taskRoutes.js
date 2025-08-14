@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 
-const { protect } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware'); 
+const { requireRole } = require('../middleware/authMiddleware');
 const ctrl = require('../controllers/tasksController');
 
-router.get('/', protect, ctrl.list);         // GET /api/tasks
-router.post('/', protect, ctrl.create);      // POST /api/tasks
-router.put('/:id', protect, ctrl.update);    // PUT /api/tasks/:id
-router.delete('/:id', protect, ctrl.remove); // DELETE /api/tasks/:id
+router.get('/', protect, ctrl.list);                     
+router.post('/', protect, requireRole('admin'), ctrl.create);
+router.put('/:id', protect, requireRole('admin'), ctrl.update);
+router.delete('/:id', protect, requireRole('admin'), ctrl.remove);
 
 module.exports = router;

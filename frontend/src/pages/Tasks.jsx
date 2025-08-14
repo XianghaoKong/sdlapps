@@ -12,10 +12,12 @@ const Tasks = () => {
   useEffect(() => {
     const fetchTasks = async () => {
       try {
+        if (!user?.token) return;
         const response = await axiosInstance.get('/api/tasks', {
           headers: { Authorization: `Bearer ${user.token}` },
         });
-        setTasks(response.data);
+        // 后端已按角色过滤：admin=全部，driver=只看自己
+        setTasks(Array.isArray(response.data) ? response.data : (response.data?.data || []));
       } catch (error) {
         alert('Failed to fetch tasks.');
       }
@@ -24,15 +26,26 @@ const Tasks = () => {
     fetchTasks();
   }, [user]);
 
+  const isAdmin = user?.role === 'admin';
+
   return (
     <div className="container mx-auto p-6">
-      <TaskForm
+      {/* 只有 admin 显示表单（创建/编辑）。driver 只看列表 */}
+      {isAdmin && (
+        <TaskForm
+          tasks={tasks}
+          setTasks={setTasks}
+          editingTask={editingTask}
+          setEditingTask={setEditingTask}
+        />
+      )}
+
+      <TaskList
         tasks={tasks}
         setTasks={setTasks}
-        editingTask={editingTask}
         setEditingTask={setEditingTask}
+        isAdmin={isAdmin}  // 可选：你若想在列表隐藏编辑/删除按钮，用这个做条件
       />
-      <TaskList tasks={tasks} setTasks={setTasks} setEditingTask={setEditingTask} />
     </div>
   );
 };
