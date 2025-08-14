@@ -1,10 +1,12 @@
-name: Deploy Backend to EC2
+name: Deploy Backend
+
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
     paths:
-      - "backend/**"
-      - ".github/workflows/backend-deploy.yml"
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -12,48 +14,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Archive backend
-        run: tar -czf backend.tgz backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Upload to EC2
-        uses: appleboy/scp-action@v0.1.7
+      - run: tar -czf backend.tar.gz backend
+
+      - uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          source: "backend.tgz"
-          target: "/home/ubuntu"
+          source: backend.tar.gz
+          target: ~/sdlapps
 
-      - name: Deploy on EC2
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            set -e
-            cd /home/ubuntu
-            rm -rf backend_new
-            mkdir -p backend_new
-            tar -xzf backend.tgz -C backend_new
-
-            cd backend_new/backend
+            mkdir -p ~/sdlapps
+            cd ~/sdlapps
+            tar -xzf backend.tar.gz
+            cd backend
+            cp -n .env.example .env || true
             npm ci --omit=dev
-
-            if [ -f /home/ubuntu/sdlapps/backend/.env ]; then
-              cp /home/ubuntu/sdlapps/backend/.env .
-            fi
-
-            mkdir -p /home/ubuntu/sdlapps
-            if [ -d /home/ubuntu/sdlapps/backend ]; then
-              mv /home/ubuntu/sdlapps/backend /home/ubuntu/sdlapps/backend_old_$(date +%s)
-            fi
-            mv /home/ubuntu/backend_new/backend /home/ubuntu/sdlapps/backend
-
-            cd /home/ubuntu/sdlapps/backend
-            if pm2 describe stvt-backend > /dev/null; then
-              pm2 reload stvt-backend
-            else
-              pm2 start server.js --name stvt-backend
-            fi
-            pm2 save
+            npx pm2 describe stvt-backend || npx pm2 start server.js --name stvt-backend
+            npx pm2 reload stvt-backend
+            npx pm2 save
