@@ -44,13 +44,16 @@ const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }) => {
       ? formData.description
       : `Details: ${formData.description || ''}\n` +
         `Vehicle: ${formData.plate || ''}\n` +
-        `Location: ${formData.location || ''}\n` +
-        `Fine: ${formData.fine || ''}`;
+        `Location: ${formData.location || ''}`;
+      
+    const numericFine = formData.fine ? Number(formData.fine) : undefined;
 
     const payload = {
       title: formData.title,
       description: combinedDescription,
-      deadline: formData.deadline
+      deadline: formData.deadline,
+      plate: formData.plate?.trim().toUpperCase(), 
+      ...(Number.isFinite(numericFine) ? { fine: numericFine } : {}),
     };
 
     try {
