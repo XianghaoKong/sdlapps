@@ -1,0 +1,61 @@
+name: Deploy Frontend to EC2
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-deploy.yml"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install & Build
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Archive build
+        run: tar -czf frontend_build.tgz -C frontend build
+
+      - name: Upload to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "frontend_build.tgz"
+          target: "/home/ubuntu"
+
+      - name: Publish to Nginx root
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            set -e
+            cd /home/ubuntu
+            rm -rf fe_new
+            mkdir fe_new
+            tar -xzf frontend_build.tgz -C fe_new
+
+            sudo mkdir -p /var/www/stvt-frontend
+            sudo rm -rf /var/www/stvt-frontend/*
+            sudo cp -r fe_new/build/* /var/www/stvt-frontend/
+
+            sudo chown -R www-data:www-data /var/www/stvt-frontend
+            sudo nginx -t
+            sudo systemctl reload nginx
