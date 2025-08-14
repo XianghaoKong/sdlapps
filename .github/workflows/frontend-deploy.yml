@@ -2,47 +2,34 @@ name: Deploy Frontend
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-deploy.yml'
-  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: SSH build & publish frontend on EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          node-version: 20
-
-      - run: echo "REACT_APP_API_URL=${{ secrets.PUBLIC_API_URL }}" > .env.production
-      - run: npm ci
-      - run: npm run build
-      - run: tar -czf build.tar.gz build
-
-      - uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          source: frontend/build.tar.gz
-          target: ~/sdlapps
-
-      - uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
-            mkdir -p ~/sdlapps
+            set -e
             cd ~/sdlapps
-            tar -xzf build.tar.gz
-            sudo rm -rf /var/www/html/*
-            sudo cp -r frontend/build/* /var/www/html/
-            sudo systemctl reload nginx
+            git fetch --all
+            git checkout main
+            git pull
+
+            cd frontend
+            npm ci
+            CI=false npm run build
+
+            sudo mkdir -p /var/www/stvt
+            sudo rm -rf /var/www/stvt/*
+            sudo cp -r build/* /var/www/stvt/

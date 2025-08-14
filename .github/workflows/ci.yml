@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, feature/**]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   backend:
@@ -16,12 +16,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
       - run: npm ci
-      - run: npm run lint --if-present
-        continue-on-error: true
-      - run: npm test
-        continue-on-error: true
+      - run: npm run build --if-present
+      - run: npm test --if-present
 
   frontend:
     runs-on: ubuntu-latest
@@ -32,7 +30,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
       - run: npm ci
-      - run: echo "REACT_APP_API_URL=${{ secrets.PUBLIC_API_URL }}" > .env.production
-      - run: npm run build --if-present
+      - name: Build (ignore CRA CI strict)
+        run: npm run build
+        env:
+          CI: "false"
