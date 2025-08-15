@@ -153,5 +153,4 @@ const TaskForm = ({ tasks, setTasks, editingTask, setEditingTask }) => {
   );
 };
 
-
 export default TaskForm;

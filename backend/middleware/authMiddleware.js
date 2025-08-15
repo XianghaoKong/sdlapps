@@ -34,4 +34,5 @@ const requireRole = (role) => (req, res, next) => {
   return next();
 };
 
+
 module.exports = { protect, requireRole };

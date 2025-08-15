@@ -8,7 +8,8 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64]   
+    timeout-minutes: 40
 
     defaults:
       run:
@@ -20,12 +21,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
 
-      - name: Build
+      - name: Prepare build env
         run: |
           echo "REACT_APP_API_BASE=http://${{ secrets.EC2_HOST }}/api" > .env.production
-          npm ci
-          CI=false npm run build
+          npm config set fund false
+          npm config set audit false
+          npm config set progress false
+          npm config set fetch-retry-maxtimeout 120000
+          export NODE_OPTIONS="--max-old-space-size=1024"
+
+      - name: Install deps (faster)
+        run: npm ci --no-audit --no-fund
+
+      - name: Build (non-blocking flags)
+        run: |
+          CI=false GENERATE_SOURCEMAP=false npm run build
 
       - name: Publish to Nginx
         run: |

@@ -8,7 +8,8 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64]   
+    timeout-minutes: 30
 
     defaults:
       run:
@@ -22,23 +23,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
 
       - name: Write .env
         run: |
-          cat > .env << 'EOF'
-          MONGO_URI=${{ secrets.MONGO_URI }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          ADMIN_KEY=${{ secrets.ADMIN_KEY }}
-          PORT=5001
-          EOF
+          echo "MONGO_URI=${{ secrets.MONGO_URI }}" > .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "ADMIN_KEY=${{ secrets.ADMIN_KEY }}" >> .env
+          echo "PORT=5001" >> .env
 
       - name: Install deps (prod)
-        run: npm ci --omit=dev
+        run: npm ci --omit=dev --no-audit --no-fund
 
       - name: Start/Reload PM2
         run: |
           if ! command -v pm2 >/dev/null 2>&1; then
             sudo npm i -g pm2
           fi
-          pm2 describe stvt-backend >/dev/null 2>&1 && pm2 reload stvt-backend || pm2 start server.js --name stvt-backend
+          pm2 describe stvt-backend >/dev/null 2>&1 && \
+            pm2 reload stvt-backend || pm2 start server.js --name stvt-backend
           pm2 save
