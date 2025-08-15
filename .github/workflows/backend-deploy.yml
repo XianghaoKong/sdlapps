@@ -1,4 +1,4 @@
-name: Deploy Backend
+name: Deploy Backend (self-hosted)
 
 on:
   push:
@@ -9,41 +9,44 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: SSH deploy backend
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            set -e
-            cd ~/sdlapps
-            git fetch --all
-            git checkout main
-            git pull
+      - name: Deploy backend locally (no SSH)
+        working-directory: backend
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          set -e
 
-            cd backend
-            cat > .env << 'EOF'
-            MONGO_URI=${{ secrets.MONGO_URI }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            ADMIN_KEY=${{ secrets.ADMIN_KEY }}
-            PORT=5001
-            EOF
+          # Write .env from secrets
+          cat > .env << 'EOF'
+          MONGO_URI=${MONGO_URI}
+          JWT_SECRET=${JWT_SECRET}
+          ADMIN_KEY=${ADMIN_KEY}
+          PORT=5001
+          EOF
 
-            npm ci --omit=dev
+          # Install prod deps
+          npm ci --omit=dev
 
-            if ! command -v pm2 >/dev/null 2>&1; then
-              sudo npm i -g pm2
-            fi
+          # Ensure pm2
+          if ! command -v pm2 >/dev/null 2>&1; then
+            sudo npm i -g pm2
+          fi
 
-            if pm2 describe stvt-backend >/dev/null 2>&1; then
-              pm2 reload stvt-backend
-            else
-              pm2 start server.js --name stvt-backend
-            fi
+          # Start/reload with pm2 using current working directory
+          if pm2 describe stvt-backend >/dev/null 2>&1; then
+            pm2 reload stvt-backend
+          else
+            pm2 start server.js --name stvt-backend
+          fi
 
-            pm2 save
+          pm2 save
