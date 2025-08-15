@@ -4,49 +4,41 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'backend/**'
-      - '.github/workflows/backend-deploy.yml'
+      - "backend/**"
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64]
+
     defaults:
       run:
-        shell: bash
+        working-directory: backend
+
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy backend locally (no SSH)
-        working-directory: backend
-        env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-        run: |
-          set -e
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-          # Write .env from secrets
+      - name: Write .env
+        run: |
           cat > .env << 'EOF'
-          MONGO_URI=${MONGO_URI}
-          JWT_SECRET=${JWT_SECRET}
-          ADMIN_KEY=${ADMIN_KEY}
+          MONGO_URI=${{ secrets.MONGO_URI }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          ADMIN_KEY=${{ secrets.ADMIN_KEY }}
           PORT=5001
           EOF
 
-          # Install prod deps
-          npm ci --omit=dev
+      - name: Install deps (prod)
+        run: npm ci --omit=dev
 
-          # Ensure pm2
+      - name: Start/Reload PM2
+        run: |
           if ! command -v pm2 >/dev/null 2>&1; then
             sudo npm i -g pm2
           fi
-
-          # Start/reload with pm2 using current working directory
-          if pm2 describe stvt-backend >/dev/null 2>&1; then
-            pm2 reload stvt-backend
-          else
-            pm2 start server.js --name stvt-backend
-          fi
-
+          pm2 describe stvt-backend >/dev/null 2>&1 && pm2 reload stvt-backend || pm2 start server.js --name stvt-backend
           pm2 save
