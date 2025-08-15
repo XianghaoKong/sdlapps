@@ -26,3 +26,5 @@ http://13.55.126.110/api
 
 # The admin key is <123456> if you want to register as an admin, also specified in .env.example
 
+#Jira URL: https://chesterkong77.atlassian.net/jira
+
